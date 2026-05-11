@@ -65,20 +65,20 @@ function otsuThreshold(gray: Uint8Array): number {
 
 // ─── Box Blur (3-pass approximation of Gaussian) ─────────────────────────────
 
-function boxBlur(src: Uint8Array, w: number, h: number, radius: number): Uint8Array {
-  let result = new Uint8Array(src);
+function boxBlur(src: Uint8Array, w: number, h: number, radius: number): Uint8Array<ArrayBuffer> {
+  let result: Uint8Array<ArrayBuffer> = new Uint8Array(src.buffer.slice(0) as ArrayBuffer);
   for (let pass = 0; pass < 3; pass++) {
     result = singleBoxBlur(result, w, h, radius);
   }
   return result;
 }
 
-function singleBoxBlur(src: Uint8Array, w: number, h: number, r: number): Uint8Array {
-  const out = new Uint8Array(src.length);
+function singleBoxBlur(src: Uint8Array, w: number, h: number, r: number): Uint8Array<ArrayBuffer> {
+  const out: Uint8Array<ArrayBuffer> = new Uint8Array(src.length);
   const size = 2 * r + 1;
 
   // Horizontal pass
-  const temp = new Uint8Array(src.length);
+  const temp: Uint8Array<ArrayBuffer> = new Uint8Array(src.length);
   for (let y = 0; y < h; y++) {
     let sum = 0, count = 0;
     for (let x = -r; x <= r; x++) {
