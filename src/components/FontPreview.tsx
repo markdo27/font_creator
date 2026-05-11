@@ -23,8 +23,22 @@ export function FontPreview() {
     }
 
     try {
+      const validAssignments = store.assignments.filter(a => {
+        const blob = store.blobs.find(b => b.id === a.blobId);
+        if (!blob?.svgPath) {
+          console.warn(`[Fontify] Blob ${a.blobId} (char '${a.char}') has no svgPath — skipping`);
+          return false;
+        }
+        return true;
+      });
+
+      if (validAssignments.length === 0) {
+        console.warn('[Fontify] No valid assignments with svgPath found. Font preview skipped.');
+        return;
+      }
+
       const font = assembleFont(
-        store.assignments,
+        validAssignments,
         store.blobs,
         store.baseline,
         store.fontMetrics,

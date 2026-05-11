@@ -19,17 +19,20 @@ export function traceWithFallback(blob: BlobDescriptor): string {
   }
 
   // Find all contour polygons using Marching Squares
-  const visited = new Uint8Array(pw * ph);
+  const startedFrom = new Set<number>(); // tracks which cells we already started a polygon from
   const polygons: [number, number][][] = [];
 
   for (let y = 0; y < ph - 1; y++) {
     for (let x = 0; x < pw - 1; x++) {
       const idx = y * pw + x;
-      if (!padded[idx] || visited[idx]) continue;
+      if (!padded[idx] || startedFrom.has(idx)) continue;
+      startedFrom.add(idx);
 
-      // Boundary trace (Moore neighborhood)
-      const poly = traceBoundary(padded, pw, ph, x, y, visited);
+      // Boundary trace (Moore neighborhood) — uses its own visited set
+      const poly = traceBoundary(padded, pw, ph, x, y);
       if (poly.length >= 3) {
+        // Mark all pixels in this polygon as started so we don't re-enter them
+        for (const [px, py] of poly) startedFrom.add(py * pw + px);
         // Shift back by padding offset
         polygons.push(poly.map(([px, py]) => [px - 1, py - 1] as [number, number]));
       }
@@ -61,9 +64,9 @@ function traceBoundary(
   h: number,
   startX: number,
   startY: number,
-  visited: Uint8Array
 ): [number, number][] {
   const poly: [number, number][] = [];
+  const visited = new Uint8Array(w * h);
   const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
   let x = startX, y = startY, dir = 0;
   let steps = 0;
