@@ -32,10 +32,10 @@ export function BlobGrid({ containerWidth, containerHeight }: BlobGridProps) {
 
   return (
     <svg
-      className="absolute inset-0 pointer-events-none"
+      className="absolute inset-0"
       width={containerWidth}
       height={containerHeight}
-      style={{ position: 'absolute', top: 0, left: 0 }}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
     >
       {blobs.map((blob, i) => {
         const color = BLOB_COLORS[i % BLOB_COLORS.length];

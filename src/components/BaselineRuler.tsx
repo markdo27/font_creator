@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useFontStore } from '@/hooks/useFontStore';
 
 interface BaselineRulerProps {
@@ -13,7 +13,6 @@ export function BaselineRuler({ containerWidth, containerHeight }: BaselineRuler
   const svgRef = useRef<SVGSVGElement>(null);
 
   // ── Coordinate helpers ──────────────────────────────────────────────────────
-  // These are computed fresh on each render — no hooks needed here
   const scale = sourceHeight > 0 && sourceWidth > 0
     ? Math.min(containerWidth / sourceWidth, containerHeight / sourceHeight)
     : 1;
@@ -25,23 +24,28 @@ export function BaselineRuler({ containerWidth, containerHeight }: BaselineRuler
     [offsetY, scale]
   );
 
-  const onMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (!draggingRef.current || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const rawY = e.clientY - rect.top;
-    const clamped = Math.max(0, Math.min(containerHeight, rawY));
-    const imgY = toImage(clamped);
-
-    if (draggingRef.current === 'baseline') {
-      setBaseline({ baselineY: imgY });
-    } else {
-      setBaseline({ meanLineY: imgY });
-    }
+  // ── Window-level drag listeners (works even though SVG is pointer-events:none) ──
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!draggingRef.current || !svgRef.current) return;
+      const rect = svgRef.current.getBoundingClientRect();
+      const rawY = e.clientY - rect.top;
+      const clamped = Math.max(0, Math.min(containerHeight, rawY));
+      const imgY = toImage(clamped);
+      if (draggingRef.current === 'baseline') {
+        setBaseline({ baselineY: imgY });
+      } else {
+        setBaseline({ meanLineY: imgY });
+      }
+    };
+    const onMouseUp = () => { draggingRef.current = null; };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
   }, [containerHeight, setBaseline, toImage]);
-
-  const onMouseUp = useCallback(() => {
-    draggingRef.current = null;
-  }, []);
 
   // ── Guard AFTER all hooks are called ───────────────────────────────────────
   if (!sourceHeight || !containerWidth) return null;
@@ -52,7 +56,7 @@ export function BaselineRuler({ containerWidth, containerHeight }: BaselineRuler
   const RulerLine = ({
     y, color, label, onDragStart
   }: { y: number; color: string; label: string; onDragStart: () => void }) => (
-    <g style={{ cursor: 'ns-resize' }} onMouseDown={onDragStart}>
+    <g style={{ cursor: 'ns-resize', pointerEvents: 'all' }} onMouseDown={onDragStart}>
       {/* Hit area */}
       <rect x={0} y={y - 8} width={containerWidth} height={16} fill="transparent" />
       {/* Dashed line */}
@@ -83,10 +87,7 @@ export function BaselineRuler({ containerWidth, containerHeight }: BaselineRuler
       className="absolute inset-0"
       width={containerWidth}
       height={containerHeight}
-      style={{ position: 'absolute', top: 0, left: 0, userSelect: 'none' }}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
+      style={{ position: 'absolute', top: 0, left: 0, userSelect: 'none', pointerEvents: 'none' }}
     >
       <RulerLine
         y={meanLineScreen}
